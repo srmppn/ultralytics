@@ -23,6 +23,7 @@ __all__ = (
     "DeformableTransformerDecoderLayer",
     "MSDeformAttn",
     "MLP",
+    "Resize",
 )
 
 
@@ -800,3 +801,11 @@ class DeformableTransformerDecoder(nn.Module):
             refer_bbox = refined_bbox.detach() if self.training else refined_bbox
 
         return torch.stack(dec_bboxes), torch.stack(dec_cls)
+
+class Resize(nn.Module):
+    def __init__(self, size):
+        super().__init__()
+
+    def forward(self, x: List[torch.Tensor]):
+        print("Forwarded")
+        return x[0]

@@ -69,7 +69,7 @@ from ultralytics.nn.modules import (
     YOLOESegment,
     v10Detect,
 )
-from ultralytics.nn.modules.conv import Resize
+from ultralytics.nn.modules.transformer import Resize
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, YAML, colorstr, emojis
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
 from ultralytics.utils.loss import (
@@ -334,7 +334,7 @@ class BaseModel(torch.nn.Module):
         if getattr(self, "criterion", None) is None:
             self.criterion = self.init_criterion()
 
-        preds = self.forward(batch["img"]) if preds is None else preds
+        preds = self.forward([batch["img"], batch["altitude"]]) if preds is None else preds
         return self.criterion(preds, batch)
 
     def init_criterion(self):

@@ -1739,7 +1739,6 @@ class LetterBox:
         labels["instances"].denormalize(*labels["img"].shape[:2][::-1])
         labels["instances"].scale(*ratio)
         labels["instances"].add_padding(padw, padh)
-        labels["instances"].altitude = 10
         return labels
 
 
@@ -2172,7 +2171,7 @@ class Format:
         labels["img"] = self._format_img(img)
         labels["cls"] = torch.from_numpy(cls) if nl else torch.zeros(nl)
         labels["bboxes"] = torch.from_numpy(instances.bboxes) if nl else torch.zeros((nl, 4))
-        labels["altitude"] = torch.zeros(instances.altitude)
+        labels["altitude"] = torch.tensor(instances.altitude)
         if self.return_keypoint:
             labels["keypoints"] = torch.from_numpy(instances.keypoints)
             if self.normalize:

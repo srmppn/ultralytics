@@ -138,6 +138,7 @@ class YOLODataset(BaseDataset):
                             "keypoints": keypoint,
                             "normalized": True,
                             "bbox_format": "xywh",
+                            "altitude": 10,
                         }
                     )
                 if msg:
@@ -233,6 +234,7 @@ class YOLODataset(BaseDataset):
                 mask_ratio=hyp.mask_ratio,
                 mask_overlap=hyp.overlap_mask,
                 bgr=hyp.bgr if self.augment else 0.0,  # only affect training.
+                altitude=hyp.altitude
             )
         )
         return transforms
@@ -269,6 +271,7 @@ class YOLODataset(BaseDataset):
         keypoints = label.pop("keypoints", None)
         bbox_format = label.pop("bbox_format")
         normalized = label.pop("normalized")
+        altitude = label.pop("altitude")
 
         # NOTE: do NOT resample oriented boxes
         segment_resamples = 100 if self.use_obb else 1000

@@ -220,7 +220,7 @@ class Instances:
         ... )
     """
 
-    def __init__(self, bboxes, segments=None, keypoints=None, bbox_format="xywh", normalized=True) -> None:
+    def __init__(self, bboxes, segments=None, keypoints=None, bbox_format="xywh", normalized=True, altitude=None) -> None:
         """
         Initialize the Instances object with bounding boxes, segments, and keypoints.
 
@@ -235,6 +235,7 @@ class Instances:
         self.keypoints = keypoints
         self.normalized = normalized
         self.segments = segments
+        self.altitude = altitude
 
     def convert_bbox(self, format):
         """
@@ -338,12 +339,14 @@ class Instances:
         keypoints = self.keypoints[index] if self.keypoints is not None else None
         bboxes = self.bboxes[index]
         bbox_format = self._bboxes.format
+        altitude = self.altitude
         return Instances(
             bboxes=bboxes,
             segments=segments,
             keypoints=keypoints,
             bbox_format=bbox_format,
             normalized=self.normalized,
+            altitude=altitude,
         )
 
     def flipud(self, h):
@@ -470,6 +473,7 @@ class Instances:
         use_keypoint = instances_list[0].keypoints is not None
         bbox_format = instances_list[0]._bboxes.format
         normalized = instances_list[0].normalized
+        altitude = instances_list[0].altitude
 
         cat_boxes = np.concatenate([ins.bboxes for ins in instances_list], axis=axis)
         seg_len = [b.segments.shape[1] for b in instances_list]
@@ -487,7 +491,7 @@ class Instances:
         else:
             cat_segments = np.concatenate([b.segments for b in instances_list], axis=axis)
         cat_keypoints = np.concatenate([b.keypoints for b in instances_list], axis=axis) if use_keypoint else None
-        return cls(cat_boxes, cat_segments, cat_keypoints, bbox_format, normalized)
+        return cls(cat_boxes, cat_segments, cat_keypoints, bbox_format, normalized, altitude)
 
     @property
     def bboxes(self):

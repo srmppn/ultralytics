@@ -23,6 +23,7 @@ __all__ = (
     "Concat",
     "RepConv",
     "Index",
+    "Resize"
 )
 
 
@@ -711,3 +712,10 @@ class Index(nn.Module):
             (torch.Tensor): Selected tensor.
         """
         return x[self.index]
+
+class Resize(nn.Module):
+    def __init__(self, size):
+        super().__init__()
+
+    def forward(self, x: List[torch.Tensor]):
+        return x[0]

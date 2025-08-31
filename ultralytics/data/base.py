@@ -397,8 +397,7 @@ class BaseDataset(Dataset):
         )  # for evaluation
         if self.rect:
             label["rect_shape"] = self.batch_shapes[self.batch[index]]
-        future = self.update_labels_info(label)
-        return future
+        return self.update_labels_info(label)
 
     def __len__(self) -> int:
         """Return the length of the labels list for the dataset."""

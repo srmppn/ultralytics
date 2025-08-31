@@ -98,6 +98,7 @@ class DetectionTrainer(BaseTrainer):
         Returns:
             (Dict): Preprocessed batch with normalized images.
         """
+        print('altitude', batch['altitude'])
         batch["img"] = batch["img"].to(self.device, non_blocking=True).float() / 255
         if self.args.multi_scale:
             imgs = batch["img"]

@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import cv2
 
 from ultralytics.utils.metrics import OKS_SIGMA
 from ultralytics.utils.ops import crop_mask, xywh2xyxy, xyxy2xywh
@@ -276,6 +277,26 @@ class v8DetectionLoss:
             gt_bboxes,
             mask_gt,
         )
+
+        # ===== Only for investigation =====
+        img = batch['img'].squeeze(0)  # [3, 640, 640] (remove batch dim)
+        img = img.permute(1, 2, 0).cpu().numpy()  # [640, 640, 3]  (CHW -> HWC)
+
+        # If it's float (0-1), scale to 0-255
+        if img.max() <= 1.0:
+            img = (img * 255).astype("uint8")
+        else:
+            img = img.astype("uint8")
+
+        # Convert RGB -> BGR for OpenCV
+        img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        x1, y1, x2, y2 = target_bboxes[0][0].int().tolist()
+        cv2.rectangle(img_bgr, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
+
+        cv2.imshow("image", img_bgr)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        # ===============
 
         target_scores_sum = max(target_scores.sum(), 1)
 

@@ -208,7 +208,6 @@ class BaseValidator:
 
             # Inference
             with dt[1]:
-                print("does altitude", batch["altitude"])
                 preds = model([batch["img"], batch["altitude"]], augment=augment)
 
             # Loss

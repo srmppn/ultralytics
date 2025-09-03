@@ -279,25 +279,22 @@ class v8DetectionLoss:
             mask_gt,
         )
 
-        # ===== Only for investigation =====
-        # print('size bbox', len(batch['img']))
         b, c, h, w = batch['img'].shape
         upsampler_box = []
         for i in range(b):
-            gsd = batch['gsd'][i].item()
+            gsd = batch['gsd'][i].clone().item()
             bbx = target_bboxes[i]
             upsampler_box.append(scale_boxes_with_padding(bbx, gsd, h, w))
         target_bboxes = torch.stack(upsampler_box, dim=0)
-        #print('result', r.shape, target_bboxes.shape)
+        # print('result', r.shape, target_bboxes.shape)
         # b, c, h, w = batch['img'].shape
-        # print('target boxes:', target_bboxes)
         # for i in range(b):
-        #     img = batch['img'][i].unsqueeze(0)
-        #     gsd = batch['gsd'][i].item()
-        #     bbx = target_bboxes[i]
-        #     bbx = scale_boxes_with_padding(bbx, gsd, h, w)
-        #     img = scale_with_padding(img, gsd).squeeze(0)  # [3, 640, 640] (remove batch dim)
-        #     img = img.permute(1, 2, 0).cpu().numpy()  # [640, 640, 3]  (CHW -> HWC)
+        #     img = batch['img'][i].clone().unsqueeze(0).detach()
+        #     gsd = batch['gsd'][i]
+        #     # bbx = target_bboxes[i]
+        #     bbx = scale_boxes_with_padding(target_bboxes[i], 0.5, h, w)
+        #     img = scale_with_padding(img, torch.tensor([0.5])).squeeze(0)  # [3, 640, 640] (remove batch dim)
+        #     img = img.permute(1, 2, 0).cpu().detach().numpy()  # [640, 640, 3]  (CHW -> HWC)
         #     # If it's float (0-1), scale to 0-255
         #     if img.max() <= 1.0:
         #         img = (img * 255).astype("uint8")
@@ -306,7 +303,7 @@ class v8DetectionLoss:
         #
         #     # Convert RGB -> BGR for OpenCV
         #     img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        #     print('what bbx', bbx)
+        #     # print('what bbx', bbx)
         #     x1, y1, x2, y2 = bbx[0].int().tolist()
         #     cv2.rectangle(img_bgr, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
         #

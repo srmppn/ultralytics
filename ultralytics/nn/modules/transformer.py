@@ -2,7 +2,7 @@
 """Transformer modules."""
 
 import math
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import torch
 import torch.nn as nn
@@ -807,27 +807,38 @@ class Resize(nn.Module):
         super().__init__()
         self.adaptive_resize = nn.Sequential(
             nn.Linear(1, 1),
-            nn.Sigmoid(),
+            nn.Hardtanh(0.999, 1),
         )
 
-    def forward(self, x: List[torch.Tensor]):
-        img, altitude = x
+    def forward(self, x: List):
+        img, altitude, on_gsd_evaluated = x
+        optimal_gsd_tensor = self.adaptive_resize(altitude.unsqueeze(1))
+        on_gsd_evaluated(optimal_gsd_tensor)
+
+        upsampled_tensors = []
         b, c, h, w = img.shape
-        optimal_gsd = self.adaptive_resize(altitude).item()
-        resize_h, resize_w = int(round(h * optimal_gsd)), int(round(w * optimal_gsd))
+        for i in range(b):
+            optimal_gsd = optimal_gsd_tensor[i].item()
+            image = img[i].unsqueeze(0)
+            resize_h, resize_w = int(round(h * optimal_gsd)), int(round(w * optimal_gsd))
 
-        if resize_h == 0 or resize_w == 0:
-            return torch.zeros((b, c, h, w), dtype=img.dtype, device=img.device)
+            if resize_h == 0 or resize_w == 0:
+                upsampled_tensors.append(torch.zeros((c, h, w), dtype=img.dtype, device=img.device).squeeze(0))
+                continue
 
-        # Compute padding
-        pad_h = h - resize_h
-        pad_w = w - resize_w
+            # Compute padding
+            pad_h = h - resize_h
+            pad_w = w - resize_w
 
-        # Divide padding into 2 sides
-        pad_top = pad_h // 2
-        pad_bottom = pad_h - pad_top
-        pad_left = pad_w // 2
-        pad_right = pad_w - pad_left
+            # Divide padding into 2 sides
+            pad_top = pad_h // 2
+            pad_bottom = pad_h - pad_top
+            pad_left = pad_w // 2
+            pad_right = pad_w - pad_left
 
-        img_resized = F.interpolate(img, size=(resize_h, resize_w), mode="bilinear", align_corners=False)
-        return F.pad(img_resized, (pad_left, pad_right, pad_top, pad_bottom), value=114)
+            img_resized = F.interpolate(image, size=(resize_h, resize_w), mode="bilinear", align_corners=False)
+            img_padding = F.pad(img_resized, (pad_left, pad_right, pad_top, pad_bottom), value=114/255)
+            upsampled_tensors.append(img_padding.squeeze(0))
+
+        result = torch.stack(upsampled_tensors, dim=0)
+        return result

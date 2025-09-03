@@ -328,7 +328,9 @@ class BasePredictor:
 
                 # Inference
                 with profilers[1]:
-                    preds = self.inference([im, torch.Tensor(10)], *args, **kwargs)
+                    def on_gsd_evaluated(gsd):
+                        print('optimal gsd', gsd)
+                    preds = self.inference([im, torch.Tensor([20.0]), on_gsd_evaluated], *args, **kwargs)
                     if self.args.embed:
                         yield from [preds] if isinstance(preds, torch.Tensor) else preds  # yield embedding tensors
                         continue

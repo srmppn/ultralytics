@@ -208,7 +208,9 @@ class BaseValidator:
 
             # Inference
             with dt[1]:
-                preds = model([batch["img"], batch["altitude"]], augment=augment)
+                def on_gsd_evaluated(optimal_gsd):
+                    batch["gsd"] = optimal_gsd
+                preds = model([batch["img"], batch["altitude"], on_gsd_evaluated], augment=augment)
 
             # Loss
             with dt[2]:

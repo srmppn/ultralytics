@@ -138,7 +138,7 @@ class YOLODataset(BaseDataset):
                             "keypoints": keypoint,
                             "normalized": True,
                             "bbox_format": "xywh",
-                            "altitude": 10,
+                            "altitude": 20.0,
                         }
                     )
                 if msg:

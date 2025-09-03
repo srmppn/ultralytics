@@ -333,7 +333,10 @@ class BaseModel(torch.nn.Module):
         """
         if getattr(self, "criterion", None) is None:
             self.criterion = self.init_criterion()
-        preds = self.forward([batch["img"], batch["altitude"]]) if preds is None else preds
+
+        def on_gsd_evaluated(optimal_gsd):
+            batch["gsd"] = optimal_gsd
+        preds = self.forward([batch["img"], batch["altitude"], on_gsd_evaluated]) if preds is None else preds
         return self.criterion(preds, batch)
 
     def init_criterion(self):
@@ -413,7 +416,7 @@ class DetectionModel(BaseModel):
 
             self.model.eval()  # Avoid changing batch statistics until training begins
             m.training = True  # Setting it to True to properly return strides
-            m.stride = torch.tensor([s / x.shape[-2] for x in _forward([torch.zeros(1, ch, s, s), torch.tensor([10.0])])])  # forward
+            m.stride = torch.tensor([s / x.shape[-2] for x in _forward([torch.zeros(1, ch, s, s), torch.tensor([10.0]), lambda *args: None])])  # forward
             self.stride = m.stride
             self.model.train()  # Set model back to training(default) mode
             m.bias_init()  # only run once

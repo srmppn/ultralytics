@@ -625,7 +625,7 @@ class AutoBackend(nn.Module):
         Returns:
             (torch.Tensor | List[torch.Tensor]): The raw output tensor(s) from the model.
         """
-        im, altitude = input
+        im, altitude, on_gsd_evaluated = input
         b, ch, h, w = im.shape  # batch, channel, height, width
         if self.fp16 and im.dtype != torch.float16:
             im = im.half()  # to FP16
@@ -634,7 +634,7 @@ class AutoBackend(nn.Module):
 
         # PyTorch
         if self.pt or self.nn_module:
-            y = self.model([im, altitude], augment=augment, visualize=visualize, embed=embed, **kwargs)
+            y = self.model([im, altitude, on_gsd_evaluated], augment=augment, visualize=visualize, embed=embed, **kwargs)
 
         # TorchScript
         elif self.jit:

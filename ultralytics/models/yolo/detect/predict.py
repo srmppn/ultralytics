@@ -3,7 +3,7 @@
 from ultralytics.engine.predictor import BasePredictor
 from ultralytics.engine.results import Results
 from ultralytics.utils import ops
-
+import torch
 
 class DetectionPredictor(BasePredictor):
     """

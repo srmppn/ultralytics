@@ -133,12 +133,12 @@ class YOLODataset(BaseDataset):
                             "im_file": im_file,
                             "shape": shape,
                             "cls": lb[:, 0:1],  # n, 1
-                            "bboxes": lb[:, 1:],  # n, 4
+                            "bboxes": lb[:, 1:5],  # n, 4
                             "segments": segments,
                             "keypoints": keypoint,
                             "normalized": True,
                             "bbox_format": "xywh",
-                            "altitude": 20.0,
+                            "altitude": lb[0, 5], # I forgot that the same image should have same altitude
                         }
                     )
                 if msg:

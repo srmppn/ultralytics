@@ -805,6 +805,8 @@ class DeformableTransformerDecoder(nn.Module):
 class Resize(nn.Module):
     def __init__(self, size):
         super().__init__()
+        self.min_scale = 0.3
+        self.max_scale = 1.0
         self.adaptive_resize = nn.Sequential(
             nn.Linear(1, 1),
             nn.Sigmoid(),
@@ -813,57 +815,19 @@ class Resize(nn.Module):
     def forward(self, x: List):
         img, altitude, on_gsd_evaluated = x
         optimal_gsd_tensor = self.adaptive_resize(altitude.unsqueeze(1))
-        optimal_gsd_tensor = 0.3 + optimal_gsd_tensor * (0.7 - 0.3)
-
-        # def hook(grad):
-        #     print("Gradient received:", grad)
-        #     return grad
-        #
-        # optimal_gsd_tensor.register_hook(hook)
+        optimal_gsd_tensor = self.min_scale + optimal_gsd_tensor * (self.max_scale - self.min_scale)
         on_gsd_evaluated(optimal_gsd_tensor)
 
         b, c, h, w = img.shape
-
         y_coords = torch.linspace(-1, 1, h, device=img.device)
         x_coords = torch.linspace(-1, 1, w, device=img.device)
 
         grid_y, grid_x = torch.meshgrid(y_coords, x_coords, indexing='ij')
 
-        # Stack and reshape for grid_sample
-        # grid_sample expects (B, H, W, 2) where last dim is [x, y]
         grid = torch.stack([grid_x, grid_y], dim=-1)  # (H, W, 2)
         grid = grid.unsqueeze(0).expand(b, -1, -1, -1)  # (B, H, W, 2)
 
         scale = optimal_gsd_tensor.view(b, 1, 1, 1)  # [B,1,1,1]
-        #grid = grid / torch.Tensor([1.0])  # shrinks grid coordinates
+        grid = grid / scale  # shrinks grid coordinates
 
-        # Sample using grid_sample
-        scaled_image = F.grid_sample(img, grid, mode='bilinear', align_corners=True)
-        return scaled_image
-
-        # upsampled_tensors = []
-        # b, c, h, w = img.shape
-        # for i in range(b):
-        #     optimal_gsd = 0.5
-        #     image = img[i].unsqueeze(0)
-        #     resize_h, resize_w = int(round(h * optimal_gsd)), int(round(w * optimal_gsd))
-        #
-        #     if resize_h == 0 or resize_w == 0:
-        #         upsampled_tensors.append(torch.zeros((c, h, w), dtype=img.dtype, device=img.device).squeeze(0))
-        #         continue
-        #
-        #     # Compute padding
-        #     pad_h = h - resize_h
-        #     pad_w = w - resize_w
-        #
-        #     # Divide padding into 2 sides
-        #     pad_top = pad_h // 2
-        #     pad_bottom = pad_h - pad_top
-        #     pad_left = pad_w // 2
-        #     pad_right = pad_w - pad_left
-        #
-        #     img_resized = F.interpolate(image, size=(resize_h, resize_w), mode="bilinear", align_corners=False)
-        #     img_padding = F.pad(img_resized, (pad_left, pad_right, pad_top, pad_bottom), value=114/255)
-        #     upsampled_tensors.append(img_padding.squeeze(0))
-        # result = torch.stack(upsampled_tensors, dim=0)
-        # return result
+        return F.grid_sample(img, grid, mode='bilinear', align_corners=True)

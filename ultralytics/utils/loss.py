@@ -279,37 +279,38 @@ class v8DetectionLoss:
             mask_gt,
         )
 
-        b, c, h, w = batch['img'].shape
-        upsampler_box = []
-        for i in range(b):
-            gsd = batch['gsd'][i].clone().item()
-            bbx = target_bboxes[i]
-            upsampler_box.append(scale_boxes_with_padding(bbx, gsd, h, w))
-        target_bboxes = torch.stack(upsampler_box, dim=0)
-        # print('result', r.shape, target_bboxes.shape)
         # b, c, h, w = batch['img'].shape
+        # upsampler_box = []
         # for i in range(b):
-        #     img = batch['img'][i].clone().unsqueeze(0).detach()
-        #     gsd = batch['gsd'][i]
-        #     # bbx = target_bboxes[i]
-        #     bbx = scale_boxes_with_padding(target_bboxes[i], 0.5, h, w)
-        #     img = scale_with_padding(img, torch.tensor([0.5])).squeeze(0)  # [3, 640, 640] (remove batch dim)
-        #     img = img.permute(1, 2, 0).cpu().detach().numpy()  # [640, 640, 3]  (CHW -> HWC)
-        #     # If it's float (0-1), scale to 0-255
-        #     if img.max() <= 1.0:
-        #         img = (img * 255).astype("uint8")
-        #     else:
-        #         img = img.astype("uint8")
-        #
-        #     # Convert RGB -> BGR for OpenCV
-        #     img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        #     # print('what bbx', bbx)
-        #     x1, y1, x2, y2 = bbx[0].int().tolist()
-        #     cv2.rectangle(img_bgr, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
-        #
-        #     cv2.imshow("image", img_bgr)
-        #     cv2.waitKey(0)
-        #     cv2.destroyAllWindows()
+        #     gsd = batch['gsd'][i].clone().item()
+        #     bbx = target_bboxes[i]
+        #     upsampler_box.append(scale_boxes_with_padding(bbx, gsd, h, w))
+        # target_bboxes = torch.stack(upsampler_box, dim=0)
+        # print('result', r.shape, target_bboxes.shape)
+        b, c, h, w = batch['img'].shape
+        for i in range(b):
+            img = batch['img'][i].clone().unsqueeze(0).detach()
+            gsd = batch['gsd'][i]
+            print('gsd', gsd)
+            # bbx = target_bboxes[i]
+            bbx = scale_boxes_with_padding(target_bboxes[i], gsd.clone().detach().item(), h, w)
+            img = scale_with_padding(img, gsd).squeeze(0)  # [3, 640, 640] (remove batch dim)
+            img = img.permute(1, 2, 0).cpu().detach().numpy()  # [640, 640, 3]  (CHW -> HWC)
+            # If it's float (0-1), scale to 0-255
+            if img.max() <= 1.0:
+                img = (img * 255).astype("uint8")
+            else:
+                img = img.astype("uint8")
+
+            # Convert RGB -> BGR for OpenCV
+            img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            # print('what bbx', bbx)
+            x1, y1, x2, y2 = bbx[0].int().tolist()
+            cv2.rectangle(img_bgr, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
+
+            cv2.imshow("image", img_bgr)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
         # ===============
 
         target_scores_sum = max(target_scores.sum(), 1)

@@ -15,7 +15,7 @@ from ultralytics.utils.torch_utils import autocast
 from .metrics import bbox_iou, probiou
 from .tal import bbox2dist
 from .transform import scale_boxes_with_padding, scale_with_padding
-
+import matplotlib.pyplot as plt
 
 class VarifocalLoss(nn.Module):
     """
@@ -269,48 +269,58 @@ class v8DetectionLoss:
         # dfl_conf = pred_distri.view(batch_size, -1, 4, self.reg_max).detach().softmax(-1)
         # dfl_conf = (dfl_conf.amax(-1).mean(-1) + dfl_conf.amax(-1).amin(-1)) / 2
 
+        b, c, h, w = batch['img'].shape
+        scaled_gt_bboxes = scale_boxes_with_padding(gt_bboxes, batch['gsd'], h, w)
+
         _, target_bboxes, target_scores, fg_mask, _ = self.assigner(
             # pred_scores.detach().sigmoid() * 0.8 + dfl_conf.unsqueeze(-1) * 0.2,
             pred_scores.detach().sigmoid(),
-            (pred_bboxes.detach() * stride_tensor).type(gt_bboxes.dtype),
+            (pred_bboxes.detach() * stride_tensor).type(scaled_gt_bboxes.dtype),
             anchor_points * stride_tensor,
             gt_labels,
-            gt_bboxes,
+            scaled_gt_bboxes,
             mask_gt,
         )
 
+        # =============== monitoring
+        # import numpy as np
         # b, c, h, w = batch['img'].shape
-        # upsampler_box = []
+        # original_image = np.zeros_like(batch['img'].shape)
+        # resized_image = np.zeros_like(batch['img'].shape)
+        #
         # for i in range(b):
-        #     gsd = batch['gsd'][i].clone().item()
-        #     bbx = target_bboxes[i]
-        #     upsampler_box.append(scale_boxes_with_padding(bbx, gsd, h, w))
-        # target_bboxes = torch.stack(upsampler_box, dim=0)
-        # print('result', r.shape, target_bboxes.shape)
-        b, c, h, w = batch['img'].shape
-        for i in range(b):
-            img = batch['img'][i].clone().unsqueeze(0).detach()
-            gsd = batch['gsd'][i]
-            print('gsd', gsd)
-            # bbx = target_bboxes[i]
-            bbx = scale_boxes_with_padding(target_bboxes[i], gsd.clone().detach().item(), h, w)
-            img = scale_with_padding(img, gsd).squeeze(0)  # [3, 640, 640] (remove batch dim)
-            img = img.permute(1, 2, 0).cpu().detach().numpy()  # [640, 640, 3]  (CHW -> HWC)
-            # If it's float (0-1), scale to 0-255
-            if img.max() <= 1.0:
-                img = (img * 255).astype("uint8")
-            else:
-                img = img.astype("uint8")
-
-            # Convert RGB -> BGR for OpenCV
-            img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-            # print('what bbx', bbx)
-            x1, y1, x2, y2 = bbx[0].int().tolist()
-            cv2.rectangle(img_bgr, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
-
-            cv2.imshow("image", img_bgr)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+        #     original_image = batch['img'][i].clone().unsqueeze(0).detach()
+        #     resized_image = original_image.clone()
+        #
+        #     gsd = batch['gsd'][i]
+        #
+        #     resized_image = scale_with_padding(resized_image, gsd).squeeze(0)  # [3, 640, 640] (remove batch dim)
+        #     resized_image = resized_image.permute(1, 2, 0).cpu().detach().numpy()  # [640, 640, 3]  (CHW -> HWC)
+        #
+        #     if resized_image.max() <= 1.0:
+        #         resized_image = (resized_image * 255).astype("uint8")
+        #     else:
+        #         resized_image = resized_image.astype("uint8")
+        #
+        #     original_image = original_image.squeeze(0).permute(1, 2, 0).cpu().detach().numpy()
+        #     resized_image = cv2.cvtColor(resized_image, cv2.COLOR_RGB2BGR)
+        #
+        #     for bbox in target_bboxes[i]:
+        #         x1, y1, x2, y2 = bbox.int().tolist()
+        #         cv2.rectangle(resized_image, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
+        #
+        # plt.subplot(1, 2, 1)
+        # plt.imshow(original_image)
+        # plt.title('Original')
+        # plt.axis('off')
+        #
+        # plt.subplot(1, 2, 2)
+        # plt.imshow(resized_image)
+        # plt.title('Resized')
+        # plt.axis('off')
+        # plt.show(block=False)
+        # plt.pause(3)  # Pauses the plot display for 3 seconds
+        # plt.close()  # Closes the current figure
         # ===============
 
         target_scores_sum = max(target_scores.sum(), 1)
@@ -321,6 +331,34 @@ class v8DetectionLoss:
 
         # Bbox loss
         if fg_mask.sum():
+
+            widths = scaled_gt_bboxes[..., 2] - scaled_gt_bboxes[..., 0]
+            heights = scaled_gt_bboxes[..., 3] - scaled_gt_bboxes[..., 1]
+
+            mask = (widths > 0) & (heights > 0)
+            widths_valid = widths[mask]
+            heights_valid = heights[mask]
+
+            areas = widths_valid * heights_valid
+
+            print('gt avg bounding boxes size:', widths_valid.mean(), heights_valid.mean(), areas.mean())
+
+            pbbbox = (pred_bboxes.detach() * stride_tensor).type(scaled_gt_bboxes.dtype)
+
+            widths = pbbbox[..., 2] - pbbbox[..., 0]
+            heights = pbbbox[..., 3] - pbbbox[..., 1]
+
+            mask = (widths > 0) & (heights > 0)
+            widths_valid = widths[mask]
+            heights_valid = heights[mask]
+
+            areas = widths_valid * heights_valid
+
+            print('pbox avg bounding boxes size:', widths_valid.mean(), heights_valid.mean(), areas.mean())
+
+            # variance = torch.var(sizes)  # penalizes variation in size
+            # loss[3] = variance
+
             target_bboxes /= stride_tensor
             loss[0], loss[2] = self.bbox_loss(
                 pred_distri, pred_bboxes, anchor_points, target_bboxes, target_scores, target_scores_sum, fg_mask
@@ -329,7 +367,7 @@ class v8DetectionLoss:
         loss[0] *= self.hyp.box  # box gain
         loss[1] *= self.hyp.cls  # cls gain
         loss[2] *= self.hyp.dfl  # dfl gain
-
+        print('loss', loss)
         return loss * batch_size, loss.detach()  # loss(box, cls, dfl)
 
 

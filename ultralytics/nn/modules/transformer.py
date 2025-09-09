@@ -24,6 +24,8 @@ __all__ = (
     "MSDeformAttn",
     "MLP",
     "Resize",
+    "Forward",
+    "AdaptiveResize",
 )
 
 
@@ -803,19 +805,33 @@ class DeformableTransformerDecoder(nn.Module):
         return torch.stack(dec_bboxes), torch.stack(dec_cls)
 
 class Resize(nn.Module):
-    def __init__(self, size):
+    def __init__(self, min_scale, max_scale):
         super().__init__()
         self.min_scale = 0.3
-        self.max_scale = 1.0
+        self.max_scale = 5.0
         self.adaptive_resize = nn.Sequential(
-            nn.Linear(1, 1),
+            nn.Linear(1, 1, bias=False),
             nn.Sigmoid(),
         )
+        nn.init.constant_(self.adaptive_resize[0].weight, 1)
+
+        def print_grad(name):
+            def hook(grad):
+                print(f"Gradient for {name}: {grad}")
+            return hook
+
+        for param_name, param in self.adaptive_resize.named_parameters():
+            param.register_hook(print_grad(param_name))
+
+    def _normalize_altitude(self, altitude):
+        alt_min, alt_max = 20, 100
+        return (altitude - 60.0) / 40.0
 
     def forward(self, x: List):
+        print("Current weight", self.adaptive_resize[0].weight)
         img, altitude, on_gsd_evaluated = x
-        optimal_gsd_tensor = self.adaptive_resize(altitude.unsqueeze(1))
-        optimal_gsd_tensor = self.min_scale + optimal_gsd_tensor * (self.max_scale - self.min_scale)
+        optimal_gsd_tensor = self.adaptive_resize(self._normalize_altitude(altitude).unsqueeze(1))
+        optimal_gsd_tensor = 0.7 + optimal_gsd_tensor
         on_gsd_evaluated(optimal_gsd_tensor)
 
         b, c, h, w = img.shape
@@ -827,7 +843,29 @@ class Resize(nn.Module):
         grid = torch.stack([grid_x, grid_y], dim=-1)  # (H, W, 2)
         grid = grid.unsqueeze(0).expand(b, -1, -1, -1)  # (B, H, W, 2)
 
-        scale = optimal_gsd_tensor.view(b, 1, 1, 1)  # [B,1,1,1]
-        grid = grid / scale  # shrinks grid coordinates
+        grid = grid / optimal_gsd_tensor.view(b, 1, 1, 1)  # [B,1,1,1]
 
         return F.grid_sample(img, grid, mode='bilinear', align_corners=True)
+
+class AdaptiveResize(nn.Module):
+    def __init__(self, min_scale, max_scale):
+        super().__init__()
+        self.resize = Resize(min_scale, max_scale)
+
+    def forward(self, x: List[torch.Tensor]):
+        c2fopt, fwdopt = x
+        _, altitude, on_gsd_evaluated = fwdopt
+        #
+        # output = self.resize([c2fopt, altitude, on_gsd_evaluated])
+        # print('Complete', c2fopt.shape, output.shape)
+        return self.resize([c2fopt, altitude, on_gsd_evaluated])
+
+class Forward(nn.Module):
+    def __init__(self, forward_all):
+        super().__init__()
+        self.forward_all = forward_all
+
+    def forward(self, x: List):
+        if self.forward_all:
+            return x
+        return x[0]

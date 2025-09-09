@@ -121,5 +121,25 @@ class DetectionPredictor(BasePredictor):
         Returns:
             (Results): Results object containing the original image, image path, class names, and scaled bounding boxes.
         """
+
+        if self.gsd_cache:
+            scale_factor = self.gsd_cache
+            scale_factor = scale_factor.view(1)
+            h, w = img.shape[2:]
+            # print("scale_factor", scale_factor)
+            resize_h = (h * scale_factor)
+            resize_w = (w * scale_factor)
+
+            pad_h = h - resize_h
+            pad_w = w - resize_w
+
+            pad_top = pad_h // 2
+            pad_left = pad_w // 2
+
+            ratio_pad = (scale_factor, scale_factor), (pad_left, pad_top)
+            pred[:, :4] = ops.scale_boxes(
+                img.shape[2:], pred[:, :4], img.shape[2:], ratio_pad=ratio_pad
+            )
+
         pred[:, :4] = ops.scale_boxes(img.shape[2:], pred[:, :4], orig_img.shape)
         return Results(orig_img, path=img_path, names=self.model.names, boxes=pred[:, :6])

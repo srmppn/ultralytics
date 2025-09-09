@@ -149,10 +149,11 @@ class DetectionValidator(BaseValidator):
         ori_shape = batch["ori_shape"][si]
         imgsz = batch["img"].shape[2:]
         ratio_pad = batch["ratio_pad"][si]
+        gsd = batch["gsd"][si]
         if len(cls):
             bbox = ops.xywh2xyxy(bbox) * torch.tensor(imgsz, device=self.device)[[1, 0, 1, 0]]  # target boxes
             ops.scale_boxes(imgsz, bbox, ori_shape, ratio_pad=ratio_pad)  # native-space labels
-        return {"cls": cls, "bbox": bbox, "ori_shape": ori_shape, "imgsz": imgsz, "ratio_pad": ratio_pad}
+        return {"cls": cls, "bbox": bbox, "ori_shape": ori_shape, "imgsz": imgsz, "ratio_pad": ratio_pad, "gsd": gsd}
 
     def _prepare_pred(self, pred: torch.Tensor, pbatch: Dict[str, Any]) -> torch.Tensor:
         """
@@ -166,6 +167,24 @@ class DetectionValidator(BaseValidator):
             (torch.Tensor): Prepared predictions in native space.
         """
         predn = pred.clone()
+        if "gsd" in pbatch:
+            scale_factor = pbatch["gsd"]
+            h, w = pbatch["imgsz"]
+
+            resize_h = (h * scale_factor).round()
+            resize_w = (w * scale_factor).round()
+
+            pad_h = h - resize_h
+            pad_w = w - resize_w
+
+            pad_top = pad_h // 2
+            pad_left = pad_w // 2
+
+            ratio_pad = (scale_factor, scale_factor), (pad_left, pad_top)
+            ops.scale_boxes(
+                pbatch["imgsz"], predn[:, :4], pbatch["imgsz"], ratio_pad=ratio_pad
+            )  # native-space pred
+
         ops.scale_boxes(
             pbatch["imgsz"], predn[:, :4], pbatch["ori_shape"], ratio_pad=pbatch["ratio_pad"]
         )  # native-space pred

@@ -69,7 +69,11 @@ from ultralytics.nn.modules import (
     YOLOESegment,
     v10Detect,
 )
-from ultralytics.nn.modules.transformer import Resize
+from ultralytics.nn.modules.transformer import (
+    Resize,
+    AdaptiveResize,
+    Forward,
+)
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, YAML, colorstr, emojis
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
 from ultralytics.utils.loss import (
@@ -416,7 +420,7 @@ class DetectionModel(BaseModel):
 
             self.model.eval()  # Avoid changing batch statistics until training begins
             m.training = True  # Setting it to True to properly return strides
-            m.stride = torch.tensor([s / x.shape[-2] for x in _forward([torch.zeros(1, ch, s, s), torch.tensor([10.0]), lambda *args: None])])  # forward
+            m.stride = torch.tensor([s / x.shape[-2] for x in _forward([torch.zeros(1, ch, s, s), torch.zeros(1), lambda *args: None])])  # forward
             self.stride = m.stride
             self.model.train()  # Set model back to training(default) mode
             m.bias_init()  # only run once
@@ -1714,6 +1718,8 @@ def parse_model(d, ch, verbose=True):
             args = [ch[f]]
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
+        elif m is AdaptiveResize:
+            c2 = ch[f[0]]
         elif m in frozenset(
             {Detect, WorldDetect, YOLOEDetect, Segment, YOLOESegment, Pose, OBB, ImagePoolingAttn, v10Detect}
         ):

@@ -145,6 +145,7 @@ class BasePredictor:
         self.callbacks = _callbacks or callbacks.get_default_callbacks()
         self.txt_path = None
         self._lock = threading.Lock()  # for automatic thread-safe inference
+        self.gsd_cache = None
         callbacks.add_integration_callbacks(self)
 
     def preprocess(self, im: Union[torch.Tensor, List[np.ndarray]]) -> torch.Tensor:
@@ -329,8 +330,8 @@ class BasePredictor:
                 # Inference
                 with profilers[1]:
                     def on_gsd_evaluated(gsd):
-                        print('optimal gsd', gsd)
-                    preds = self.inference([im, torch.Tensor([20.0]), on_gsd_evaluated], *args, **kwargs)
+                        self.gsd_cache = gsd
+                    preds = self.inference([im, torch.Tensor([34.0]), on_gsd_evaluated], *args, **kwargs)
                     if self.args.embed:
                         yield from [preds] if isinstance(preds, torch.Tensor) else preds  # yield embedding tensors
                         continue

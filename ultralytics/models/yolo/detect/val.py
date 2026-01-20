@@ -126,6 +126,8 @@ class DetectionValidator(BaseValidator):
             end2end=self.end2end,
             rotated=self.args.task == "obb",
         )
+
+        print('check outputs', outputs)
         return [{"bboxes": x[:, :4], "conf": x[:, 4], "cls": x[:, 5], "extra": x[:, 6:]} for x in outputs]
 
     def _prepare_batch(self, si: int, batch: Dict[str, Any]) -> Dict[str, Any]:
@@ -145,6 +147,7 @@ class DetectionValidator(BaseValidator):
         ori_shape = batch["ori_shape"][si]
         imgsz = batch["img"].shape[2:]
         ratio_pad = batch["ratio_pad"][si]
+        scale = batch["scale"][si]
         if len(cls):
             bbox = ops.xywh2xyxy(bbox) * torch.tensor(imgsz, device=self.device)[[1, 0, 1, 0]]  # target boxes
         return {
@@ -154,6 +157,7 @@ class DetectionValidator(BaseValidator):
             "imgsz": imgsz,
             "ratio_pad": ratio_pad,
             "im_file": batch["im_file"][si],
+            "scale": scale,
         }
 
     def _prepare_pred(self, pred: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
@@ -168,6 +172,7 @@ class DetectionValidator(BaseValidator):
         """
         if self.args.single_cls:
             pred["cls"] *= 0
+
         return pred
 
     def update_metrics(self, preds: List[Dict[str, torch.Tensor]], batch: Dict[str, Any]) -> None:
@@ -182,6 +187,23 @@ class DetectionValidator(BaseValidator):
             self.seen += 1
             pbatch = self._prepare_batch(si, batch)
             predn = self._prepare_pred(pred)
+
+            scale_factor = pbatch["scale"]
+            h, w = pbatch["imgsz"]
+
+            resize_h = (h * scale_factor).round()
+            resize_w = (w * scale_factor).round()
+
+            pad_h = h - resize_h
+            pad_w = w - resize_w
+
+            pad_top = pad_h // 2
+            pad_left = pad_w // 2
+
+            ratio_pad = (scale_factor, scale_factor), (pad_left, pad_top)
+            ops.scale_boxes(
+                pbatch["imgsz"], predn['bboxes'][:, :4], pbatch["imgsz"], ratio_pad=ratio_pad
+            )  # native-space pred
 
             cls = pbatch["cls"].cpu().numpy()
             no_pred = len(predn["cls"]) == 0

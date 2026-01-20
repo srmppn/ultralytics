@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ultralytics.utils.metrics import OKS_SIGMA
-from ultralytics.utils.ops import crop_mask, xywh2xyxy, xyxy2xywh
+from ultralytics.utils.ops import crop_mask, xywh2xyxy, xyxy2xywh, descale_boxes_with_padding
 from ultralytics.utils.tal import RotatedTaskAlignedAssigner, TaskAlignedAssigner, dist2bbox, dist2rbox, make_anchors
 from ultralytics.utils.torch_utils import autocast
 
@@ -243,7 +243,8 @@ class v8DetectionLoss:
     def __call__(self, preds: Any, batch: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         """Calculate the sum of the loss for box, cls and dfl multiplied by batch size."""
         loss = torch.zeros(3, device=self.device)  # box, cls, dfl
-        feats = preds[1] if isinstance(preds, tuple) else preds
+        feats, altitude = (preds[1]['opt'], preds[1]['alt']) if isinstance(preds, tuple) else (preds['opt'], preds['alt'])
+
         pred_distri, pred_scores = torch.cat([xi.view(feats[0].shape[0], self.no, -1) for xi in feats], 2).split(
             (self.reg_max * 4, self.nc), 1
         )
@@ -267,15 +268,74 @@ class v8DetectionLoss:
         # dfl_conf = pred_distri.view(batch_size, -1, 4, self.reg_max).detach().softmax(-1)
         # dfl_conf = (dfl_conf.amax(-1).mean(-1) + dfl_conf.amax(-1).amin(-1)) / 2
 
+        b, c, h, w = batch['img'].shape
+        scaled_gt_bboxes = descale_boxes_with_padding(gt_bboxes, altitude[0], h, w)
+
         _, target_bboxes, target_scores, fg_mask, _ = self.assigner(
             # pred_scores.detach().sigmoid() * 0.8 + dfl_conf.unsqueeze(-1) * 0.2,
             pred_scores.detach().sigmoid(),
-            (pred_bboxes.detach() * stride_tensor).type(gt_bboxes.dtype),
+            (pred_bboxes.detach() * stride_tensor).type(scaled_gt_bboxes.dtype),
             anchor_points * stride_tensor,
             gt_labels,
-            gt_bboxes,
+            scaled_gt_bboxes,
             mask_gt,
         )
+
+        # =============== monitoring
+#         def scale_with_padding(img, scale):
+#             b, c, h, w = img.shape
+#
+#             y_coords = torch.linspace(-1, 1, h, device=img.device)
+#             x_coords = torch.linspace(-1, 1, w, device=img.device)
+#
+#             grid_y, grid_x = torch.meshgrid(y_coords, x_coords, indexing='ij')
+#
+#             grid = torch.stack([grid_x, grid_y], dim=-1)  # (H, W, 2)
+#             grid = grid.unsqueeze(0).expand(b, -1, -1, -1)  # (B, H, W, 2)
+#
+#             grid = grid / scale.view(b, 1, 1, 1)
+#
+#             scaled_image = F.grid_sample(img, grid, mode='bilinear', align_corners=True)
+#             return scaled_image
+#
+#         import numpy as np
+#         import cv2
+#         import matplotlib.pyplot as plt
+#         b, c, h, w = batch['img'].shape
+#         original_image = np.zeros_like(batch['img'].shape)
+#         resized_image = np.zeros_like(batch['img'].shape)
+#
+#         for i in range(b):
+#             original_image = batch['img'][i].clone().unsqueeze(0).detach()
+#             resized_image = original_image.clone()
+#
+#             resized_image = scale_with_padding(resized_image, altitude[0][i]).squeeze(0)  # [3, 640, 640] (remove batch dim)
+#             resized_image = resized_image.permute(1, 2, 0).cpu().detach().numpy()  # [640, 640, 3]  (CHW -> HWC)
+#
+#             if resized_image.max() <= 1.0:
+#                 resized_image = (resized_image * 255).astype("uint8")
+#             else:
+#                 resized_image = resized_image.astype("uint8")
+#
+#             original_image = original_image.squeeze(0).permute(1, 2, 0).cpu().detach().numpy()
+#             resized_image = cv2.cvtColor(resized_image, cv2.COLOR_RGB2BGR)
+#
+#             for bbox in target_bboxes[i]:
+#                 x1, y1, x2, y2 = bbox.int().tolist()
+#                 cv2.rectangle(resized_image, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
+#
+#         plt.subplot(1, 2, 1)
+#         plt.imshow(original_image)
+#         plt.title('Original')
+#         plt.axis('off')
+#
+#         plt.subplot(1, 2, 2)
+#         plt.imshow(resized_image)
+#         plt.title('Resized')
+#         plt.axis('off')
+#         plt.show(block=False)
+#         plt.pause(3)  # Pauses the plot display for 3 seconds
+#         plt.close()  # Closes the current figure
 
         target_scores_sum = max(target_scores.sum(), 1)
 

@@ -198,6 +198,7 @@ class BasePredictor:
             and self.args.rect
             and (self.model.pt or (getattr(self.model, "dynamic", False) and not self.model.imx)),
             stride=self.model.stride,
+            scaleup=False
         )
         return [letterbox(image=x) for x in im]
 
@@ -327,7 +328,7 @@ class BasePredictor:
 
                 # Inference
                 with profilers[1]:
-                    preds = self.inference(im, *args, **kwargs)
+                    preds = self.inference([im, torch.Tensor([70.0])], *args, **kwargs)
                     if self.args.embed:
                         yield from [preds] if isinstance(preds, torch.Tensor) else preds  # yield embedding tensors
                         continue

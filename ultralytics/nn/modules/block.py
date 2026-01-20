@@ -52,6 +52,8 @@ __all__ = (
     "PSA",
     "SCDown",
     "TorchVision",
+    "AdaptiveResize",
+    "Proxy"
 )
 
 
@@ -2029,3 +2031,57 @@ class SAVPE(nn.Module):
         aggregated = score.transpose(-2, -3) @ x.reshape(B, self.c, C // self.c, -1).transpose(-1, -2)
 
         return F.normalize(aggregated.transpose(-2, -3).reshape(B, Q, -1), dim=-1, p=2)
+
+
+class AdaptiveResize(nn.Module):
+    def __init__(self, min_scale, max_scale):
+        super().__init__()
+        self.min_scale = min_scale
+        self.max_scale = max_scale
+        self.adaptive_resize = nn.Sequential(
+            nn.Linear(1, 1, bias=False),
+        )
+
+        nn.init.constant_(self.adaptive_resize[0].weight, 1)
+
+    def _resize(self, image, scale):
+        b, c, h, w = image.shape
+        y_coords = torch.linspace(-1, 1, h, device=image.device)
+        x_coords = torch.linspace(-1, 1, w, device=image.device)
+
+        grid_y, grid_x = torch.meshgrid(y_coords, x_coords, indexing='ij')
+
+        grid = torch.stack([grid_x, grid_y], dim=-1)  # (H, W, 2)
+        grid = grid.unsqueeze(0).expand(b, -1, -1, -1)  # (B, H, W, 2)
+        grid = grid / scale.view(b, 1, 1, 1)  # [B,1,1,1]
+
+        return F.grid_sample(image, grid, mode='bilinear', align_corners=True)
+
+    def forward(self, x: List):
+        c3k2_opt, proxy_opt = x
+        _, altitude = proxy_opt
+
+        B, _, _, current_resolution = c3k2_opt.shape
+        target_resolution = self.adaptive_resize(altitude.unsqueeze(1))
+        target_resolution = F.softplus(target_resolution)
+
+        scale_factor = target_resolution / current_resolution
+        scale_factor = torch.clamp(
+            scale_factor,
+            min=self.min_scale,
+            max=self.max_scale
+        )
+
+        resized_feature = self._resize(c3k2_opt, scale_factor)
+        return [resized_feature, scale_factor]
+
+
+class Proxy(nn.Module):
+    def __init__(self, proxy_all):
+        super().__init__()
+        self.proxy_all = proxy_all
+
+    def forward(self, params):
+        if self.proxy_all:
+            return params
+        return params[0]

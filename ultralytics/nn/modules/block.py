@@ -2032,6 +2032,20 @@ class SAVPE(nn.Module):
 
         return F.normalize(aggregated.transpose(-2, -3).reshape(B, Q, -1), dim=-1, p=2)
 
+class RefineBlock(nn.Module):
+    """Refines features after resizing to recover spatial precision."""
+    def __init__(self, channels):
+        super().__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(channels, channels, 3, padding=1, groups=channels), # Depthwise
+            nn.Conv2d(channels, channels, 1), # Pointwise
+            nn.BatchNorm2d(channels),
+            nn.SiLU()
+        )
+        self.alpha = nn.Parameter(torch.tensor(0.9))
+
+    def forward(self, x):
+        return (self.alpha * x) + ((1 - self.alpha) * self.conv(x))
 
 class AdaptiveResize(nn.Module):
     def __init__(self, min_scale, max_scale):
@@ -2040,11 +2054,14 @@ class AdaptiveResize(nn.Module):
         self.max_scale = max_scale
         self.adaptive_resize = nn.Sequential(
             nn.Linear(1, 1, bias=False),
+            nn.SiLU()
         )
 
-        nn.init.constant_(self.adaptive_resize[0].weight, 1)
+        self.refine = RefineBlock(64)
 
-    def _resize(self, image, scale):
+        nn.init.constant_(self.adaptive_resize[0].weight, 1.45)
+
+    def _resize(self, image, scale, mode):
         b, c, h, w = image.shape
         y_coords = torch.linspace(-1, 1, h, device=image.device)
         x_coords = torch.linspace(-1, 1, w, device=image.device)
@@ -2055,7 +2072,7 @@ class AdaptiveResize(nn.Module):
         grid = grid.unsqueeze(0).expand(b, -1, -1, -1)  # (B, H, W, 2)
         grid = grid / scale.view(b, 1, 1, 1)  # [B,1,1,1]
 
-        return F.grid_sample(image, grid, mode='bilinear', align_corners=True)
+        return F.grid_sample(image, grid, mode=mode, align_corners=True, padding_mode='zeros')
 
     def forward(self, x: List):
         c3k2_opt, proxy_opt = x
@@ -2063,7 +2080,6 @@ class AdaptiveResize(nn.Module):
 
         B, _, _, current_resolution = c3k2_opt.shape
         target_resolution = self.adaptive_resize(altitude.unsqueeze(1))
-        target_resolution = F.softplus(target_resolution)
 
         scale_factor = target_resolution / current_resolution
         scale_factor = torch.clamp(
@@ -2072,7 +2088,8 @@ class AdaptiveResize(nn.Module):
             max=self.max_scale
         )
 
-        resized_feature = self._resize(c3k2_opt, scale_factor)
+        resized_feature = self._resize(c3k2_opt, scale_factor, 'bilinear')
+#         resized_feature = self.refine(resized_feature)
         return [resized_feature, scale_factor]
 
 

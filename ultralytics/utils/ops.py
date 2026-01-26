@@ -157,8 +157,8 @@ def descale_boxes_with_padding(boxes, scales, h, w):
     pad_h = h - resize_h
     pad_w = w - resize_w
 
-    pad_top = pad_h // 2
-    pad_left = pad_w // 2
+    pad_top = pad_h / 2
+    pad_left = pad_w / 2
 
     # broadcast padding for each box
     pad_top = pad_top.view(B, 1, 1)
@@ -367,7 +367,6 @@ def non_max_suppression(
             LOGGER.warning(f"NMS time limit {time_limit:.3f}s exceeded")
             break  # time limit exceeded
 
-    print('from here ??')
     return (output, keepi) if return_idxs else output
 
 

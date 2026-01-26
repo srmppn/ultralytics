@@ -127,7 +127,6 @@ class DetectionValidator(BaseValidator):
             rotated=self.args.task == "obb",
         )
 
-        print('check outputs', outputs)
         return [{"bboxes": x[:, :4], "conf": x[:, 4], "cls": x[:, 5], "extra": x[:, 6:]} for x in outputs]
 
     def _prepare_batch(self, si: int, batch: Dict[str, Any]) -> Dict[str, Any]:

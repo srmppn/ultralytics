@@ -242,7 +242,7 @@ class v8DetectionLoss:
 
     def __call__(self, preds: Any, batch: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         """Calculate the sum of the loss for box, cls and dfl multiplied by batch size."""
-        loss = torch.zeros(3, device=self.device)  # box, cls, dfl
+        loss = torch.zeros(4, device=self.device)  # box, cls, dfl, variance
         feats, altitude = (preds[1]['opt'], preds[1]['alt']) if isinstance(preds, tuple) else (preds['opt'], preds['alt'])
 
         pred_distri, pred_scores = torch.cat([xi.view(feats[0].shape[0], self.no, -1) for xi in feats], 2).split(
@@ -345,6 +345,20 @@ class v8DetectionLoss:
 
         # Bbox loss
         if fg_mask.sum():
+#             widths = scaled_gt_bboxes[..., 2] - scaled_gt_bboxes[..., 0]
+#             heights = scaled_gt_bboxes[..., 3] - scaled_gt_bboxes[..., 1]
+#
+#             mask = (widths > 0) & (heights > 0)
+#             widths_valid = widths[mask]
+#             heights_valid = heights[mask]
+#
+#             eps = 1e-6
+#             areas = (widths_valid * heights_valid)
+#
+#             variance = torch.var(areas)
+#             print('check var', variance)
+#             loss[3] = torch.log(variance + eps)
+
             target_bboxes /= stride_tensor
             loss[0], loss[2] = self.bbox_loss(
                 pred_distri, pred_bboxes, anchor_points, target_bboxes, target_scores, target_scores_sum, fg_mask
@@ -353,7 +367,6 @@ class v8DetectionLoss:
         loss[0] *= self.hyp.box  # box gain
         loss[1] *= self.hyp.cls  # cls gain
         loss[2] *= self.hyp.dfl  # dfl gain
-
         return loss * batch_size, loss.detach()  # loss(box, cls, dfl)
 
 

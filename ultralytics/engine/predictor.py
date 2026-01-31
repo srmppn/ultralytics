@@ -328,7 +328,7 @@ class BasePredictor:
 
                 # Inference
                 with profilers[1]:
-                    alt_tensor = torch.Tensor([70.0]).to(im.device).unsqueeze(0).expand(batch_size, -1)
+                    alt_tensor = torch.Tensor([70.0]).to(im.device).unsqueeze(0).expand(im.shape[0], -1)
                     preds = self.inference([im, alt_tensor], *args, **kwargs)
                     if self.args.embed:
                         yield from [preds] if isinstance(preds, torch.Tensor) else preds  # yield embedding tensors

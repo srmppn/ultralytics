@@ -2079,7 +2079,7 @@ class AdaptiveResize(nn.Module):
         _, altitude = proxy_opt
 
         B, _, _, current_resolution = c3k2_opt.shape
-        target_resolution = self.adaptive_resize(altitude.unsqueeze(1))
+        target_resolution = self.adaptive_resize(altitude.unsqueeze(1).to(c3k2_opt.device))
 
         scale_factor = target_resolution / current_resolution
         scale_factor = torch.clamp(

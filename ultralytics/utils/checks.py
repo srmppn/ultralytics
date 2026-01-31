@@ -766,9 +766,8 @@ def check_amp(model):
     def amp_allclose(m, im):
         """All close FP32 vs AMP results."""
         batch = [im] * 8
-        alt = [torch.zeros(1)] * 8
         imgsz = max(256, int(model.stride.max() * 4))  # max stride P5-32 and P6-64
-        a = m([batch, alt], imgsz=imgsz, device=device, verbose=False)[0].boxes.data  # FP32 inference
+        a = m(batch, imgsz=imgsz, device=device, verbose=False)[0].boxes.data  # FP32 inference
         with autocast(enabled=True):
             b = m(batch, imgsz=imgsz, device=device, verbose=False)[0].boxes.data  # AMP inference
         del m

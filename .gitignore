@@ -2,7 +2,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
 # C extensions
 *.so
 
@@ -27,7 +26,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 requirements.txt
-setup.py
 ultralytics.egg-info
 
 # PyInstaller

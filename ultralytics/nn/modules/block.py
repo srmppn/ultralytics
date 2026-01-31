@@ -2089,7 +2089,6 @@ class AdaptiveResize(nn.Module):
         )
 
         resized_feature = self._resize(c3k2_opt, scale_factor, 'bilinear')
-#         resized_feature = self.refine(resized_feature)
         return [resized_feature, scale_factor]
 
 
@@ -2099,7 +2098,6 @@ class Proxy(nn.Module):
         self.proxy_all = proxy_all
 
     def forward(self, params):
-        print('check params', params)
         if self.proxy_all:
             return params
         return params[0]

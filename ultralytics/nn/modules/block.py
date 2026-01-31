@@ -2099,6 +2099,7 @@ class Proxy(nn.Module):
         self.proxy_all = proxy_all
 
     def forward(self, params):
+        print('verify proxy being used')
         if self.proxy_all:
             return params
         return params[0]

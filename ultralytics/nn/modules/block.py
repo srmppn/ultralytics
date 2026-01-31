@@ -2069,12 +2069,7 @@ class AdaptiveResize(nn.Module):
         grid_y, grid_x = torch.meshgrid(y_coords, x_coords, indexing='ij')
 
         grid = torch.stack([grid_x, grid_y], dim=-1)  # (H, W, 2)
-        grid = grid.unsqueeze(0)
-            .to(
-                device=self.adaptive_resize[0].weight.device,
-                dtype=self.adaptive_resize[0].weight.dtype
-            )
-            .expand(b, -1, -1, -1)  # (B, H, W, 2)
+        grid = grid.unsqueeze(0).to(device=self.adaptive_resize[0].weight.device, dtype=self.adaptive_resize[0].weight.dtype).expand(b, -1, -1, -1)  # (B, H, W, 2)
         grid = grid / scale.view(b, 1, 1, 1)  # [B,1,1,1]
 
         return F.grid_sample(image, grid, mode=mode, align_corners=True, padding_mode='zeros')

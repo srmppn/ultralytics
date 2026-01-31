@@ -14,6 +14,13 @@ if __name__ == '__main__':
         default="/content/drive/MyDrive/uavdt_complete_datasets/data.yaml",
         help="Path to the dataset .yaml file or directory"
     )
+    parser.add_argument(
+        '--epochs',
+        type=int,
+        default=1,
+        help="Number of training epochs"
+    )
+
     args = parser.parse_args()
 
     yolo = YOLO("ultralytics/cfg/models/11/yolo11-adaptive-resize.yaml").load("yolo11n.pt")
@@ -26,7 +33,7 @@ if __name__ == '__main__':
         nn.init.constant_(target_layer.weight, weight)
         print(f"Successfully reset adaptive_resize weights to {weight}")
 
-    yolo.train(data=args.data, epochs=1, imgsz=640, mosaic=0, scale=0)
+    yolo.train(data=args.data, epochs=args.epochs, imgsz=640, mosaic=0, scale=0)
 
     with torch.no_grad():
         # You may need to verify the exact path to adaptive_resize

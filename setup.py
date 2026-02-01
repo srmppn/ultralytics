@@ -22,7 +22,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--weight',
-        type=int,
+        type=float,
         default=1.2,
         help="Initial weight"
     )

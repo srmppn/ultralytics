@@ -31,4 +31,4 @@ if __name__ == '__main__':
 
     yolo = YOLO("ultralytics/cfg/models/11/yolo11.yaml").load("yolo11n.pt")
 
-    yolo.train(data=args.data, epochs=args.epochs, imgsz=640, mosaic=0, scale=0)
+    yolo.train(data=args.data, epochs=args.epochs, imgsz=640, mosaic=0, scale=0, degrees=180, flipud=0.5)

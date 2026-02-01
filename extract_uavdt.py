@@ -42,7 +42,6 @@ def uavdt_to_yolo(
 
 def visualize_frame(img_path, bboxes, title=None):
 
-    print('bboxes', bboxes)
     img = cv2.imread(img_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -96,7 +95,7 @@ if __name__ == '__main__':
     attribute_director_path = '/Users/somrak.mon/Downloads/UAV-benchmark-MOTD_v1.0/GT'
     all_entries = os.listdir(attribute_director_path)
     label_dir = '/Users/somrak.mon/Downloads/fellow3'
-    image_dir = '/Users/somrak.mon/Downloads/UAV-benchmark-M/M0702'
+    image_dir = '/Users/somrak.mon/Downloads/UAV-benchmark-M/M1102'
 
     # Filter the list to include only files
     file_names = [entry for entry in all_entries if os.path.isfile(os.path.join(attribute_director_path, entry))]
@@ -105,7 +104,7 @@ if __name__ == '__main__':
     frame_to_labels = defaultdict(list)
 
     for attr_file_name in sorted_file_names:
-        if attr_file_name != 'M0702_gt_whole.txt':
+        if attr_file_name != 'M1102_gt_whole.txt':
             continue
 
         # Read all lines
@@ -114,29 +113,29 @@ if __name__ == '__main__':
 
         for line in lines:
             ev = list(map(int, line.strip().split(',')))
-            result = uavdt_to_yolo(ev, img_w, img_h)
-            if not result:
-                continue
+#             result = uavdt_to_yolo(ev, img_w, img_h)
+#             if not result:
+#                 continue
 
             frame_id, *rest = ev
-            frame_to_labels[frame_id].append(result)
-
-    for frame_id, labels in frame_to_labels.items():
-        label_name = f"img{frame_id:06d}.txt"
-        label_path = os.path.join(label_dir, label_name)
-        with open(label_path, "w") as f:
-            f.write("\n".join(labels))
+            frame_to_labels[frame_id].append(ev)
 
 #     for frame_id, labels in frame_to_labels.items():
-#         image_name = f"img{frame_id:06d}.jpg"
-#
-#         img_path = os.path.join(image_dir, image_name)
-#         if os.path.exists(img_path):
-#             visualize_frame(
-#                 img_path,
-#                 labels,
-#                 title=f"Frame {image_name} (live)"
-#             )
-#
-#         if cv2.waitKey(25) & 0xFF == ord('q'):
-#             break
+#         label_name = f"img{frame_id:06d}.txt"
+#         label_path = os.path.join(label_dir, label_name)
+#         with open(label_path, "w") as f:
+#             f.write("\n".join(labels))
+
+    for frame_id, labels in frame_to_labels.items():
+        image_name = f"M1102_img{frame_id:06d}.jpg"
+
+        img_path = os.path.join(image_dir, image_name)
+        if os.path.exists(img_path):
+            visualize_frame(
+                img_path,
+                labels,
+                title=f"Frame {image_name} (live)"
+            )
+
+        if cv2.waitKey(25) & 0xFF == ord('q'):
+            break

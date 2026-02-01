@@ -20,13 +20,19 @@ if __name__ == '__main__':
         default=1,
         help="Number of training epochs"
     )
+    parser.add_argument(
+        '--weight',
+        type=int,
+        default=1.2,
+        help="Initial weight"
+    )
 
     args = parser.parse_args()
 
     yolo = YOLO("ultralytics/cfg/models/11/yolo11-adaptive-resize.yaml").load("yolo11n.pt")
 
     with torch.no_grad():
-        weight = 1.2
+        weight = args.weight
         # You may need to verify the exact path to adaptive_resize
         # Use print(model.model) to see the structure if this path fails
         target_layer = yolo.model.model[-2].adaptive_resize[0]

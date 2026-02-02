@@ -168,11 +168,9 @@ def descale_boxes_with_padding(boxes, scales, h, w):
     boxes = boxes.clone()
 
     # scale and add padding
-#     boxes[..., [0, 2]] = boxes[..., [0, 2]] * scales + pad_left
-#     boxes[..., [1, 3]] = boxes[..., [1, 3]] * scales + pad_top
+    boxes[..., [0, 2]] = boxes[..., [0, 2]] * scales + pad_left
+    boxes[..., [1, 3]] = boxes[..., [1, 3]] * scales + pad_top
 
-    boxes[..., [0, 2]] = (boxes[..., [0, 2]] - pad_left) / scales
-    boxes[..., [1, 3]] = (boxes[..., [1, 3]] - pad_top) / scales
     return clip_boxes(boxes, (h, w))
 
 

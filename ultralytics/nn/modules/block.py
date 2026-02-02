@@ -2057,8 +2057,6 @@ class AdaptiveResize(nn.Module):
             nn.SiLU()
         )
 
-        self.refine = RefineBlock(64)
-
         nn.init.constant_(self.adaptive_resize[0].weight, 1.45)
 
     def _resize(self, image, scale, mode):

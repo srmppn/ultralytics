@@ -269,12 +269,13 @@ class v8DetectionLoss:
         # dfl_conf = (dfl_conf.amax(-1).mean(-1) + dfl_conf.amax(-1).amin(-1)) / 2
 
         b, c, h, w = batch['img'].shape
+        pred_bboxes = (pred_bboxes.detach() * stride_tensor).type(gt_bboxes.dtype)
         pred_bboxes = descale_boxes_with_padding(pred_bboxes, altitude[0], h, w)
 
         _, target_bboxes, target_scores, fg_mask, _ = self.assigner(
             # pred_scores.detach().sigmoid() * 0.8 + dfl_conf.unsqueeze(-1) * 0.2,
             pred_scores.detach().sigmoid(),
-            (pred_bboxes.detach() * stride_tensor).type(gt_bboxes.dtype),
+            pred_bboxes,
             anchor_points * stride_tensor,
             gt_labels,
             gt_bboxes,

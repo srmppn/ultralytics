@@ -281,62 +281,6 @@ class v8DetectionLoss:
             mask_gt,
         )
 
-        # =============== monitoring
-#         def scale_with_padding(img, scale):
-#             b, c, h, w = img.shape
-#
-#             y_coords = torch.linspace(-1, 1, h, device=img.device)
-#             x_coords = torch.linspace(-1, 1, w, device=img.device)
-#
-#             grid_y, grid_x = torch.meshgrid(y_coords, x_coords, indexing='ij')
-#
-#             grid = torch.stack([grid_x, grid_y], dim=-1)  # (H, W, 2)
-#             grid = grid.unsqueeze(0).expand(b, -1, -1, -1)  # (B, H, W, 2)
-#
-#             grid = grid / scale.view(b, 1, 1, 1)
-#
-#             scaled_image = F.grid_sample(img, grid, mode='bilinear', align_corners=True)
-#             return scaled_image
-#
-#         import numpy as np
-#         import cv2
-#         import matplotlib.pyplot as plt
-#         b, c, h, w = batch['img'].shape
-#         original_image = np.zeros_like(batch['img'].shape)
-#         resized_image = np.zeros_like(batch['img'].shape)
-#
-#         for i in range(b):
-#             original_image = batch['img'][i].clone().unsqueeze(0).detach()
-#             resized_image = original_image.clone()
-#
-#             resized_image = scale_with_padding(resized_image, altitude[0][i]).squeeze(0)  # [3, 640, 640] (remove batch dim)
-#             resized_image = resized_image.permute(1, 2, 0).cpu().detach().numpy()  # [640, 640, 3]  (CHW -> HWC)
-#
-#             if resized_image.max() <= 1.0:
-#                 resized_image = (resized_image * 255).astype("uint8")
-#             else:
-#                 resized_image = resized_image.astype("uint8")
-#
-#             original_image = original_image.squeeze(0).permute(1, 2, 0).cpu().detach().numpy()
-#             resized_image = cv2.cvtColor(resized_image, cv2.COLOR_RGB2BGR)
-#
-#             for bbox in target_bboxes[i]:
-#                 x1, y1, x2, y2 = bbox.int().tolist()
-#                 cv2.rectangle(resized_image, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
-#
-#         plt.subplot(1, 2, 1)
-#         plt.imshow(original_image)
-#         plt.title('Original')
-#         plt.axis('off')
-#
-#         plt.subplot(1, 2, 2)
-#         plt.imshow(resized_image)
-#         plt.title('Resized')
-#         plt.axis('off')
-#         plt.show(block=False)
-#         plt.pause(3)  # Pauses the plot display for 3 seconds
-#         plt.close()  # Closes the current figure
-
         target_scores_sum = max(target_scores.sum(), 1)
 
         # Cls loss
@@ -345,20 +289,6 @@ class v8DetectionLoss:
 
         # Bbox loss
         if fg_mask.sum():
-#             widths = scaled_gt_bboxes[..., 2] - scaled_gt_bboxes[..., 0]
-#             heights = scaled_gt_bboxes[..., 3] - scaled_gt_bboxes[..., 1]
-#
-#             mask = (widths > 0) & (heights > 0)
-#             widths_valid = widths[mask]
-#             heights_valid = heights[mask]
-#
-#             eps = 1e-6
-#             areas = (widths_valid * heights_valid)
-#
-#             variance = torch.var(areas)
-#             print('check var', variance)
-#             loss[3] = torch.log(variance + eps)
-
             target_bboxes /= stride_tensor
             loss[0], loss[2] = self.bbox_loss(
                 pred_distri, pred_bboxes, anchor_points, target_bboxes, target_scores, target_scores_sum, fg_mask

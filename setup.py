@@ -39,7 +39,7 @@ if __name__ == '__main__':
         nn.init.constant_(target_layer.weight, weight)
         print(f"Successfully reset adaptive_resize weights to {weight}")
 
-    yolo.train(data=args.data, epochs=args.epochs, imgsz=640, mosaic=0, scale=0, degrees=180, flipud=0.5)
+    yolo.train(data=args.data, epochs=args.epochs, classes=[0], imgsz=640, mosaic=0, scale=0, degrees=180, flipud=0.5)
 
     with torch.no_grad():
         # You may need to verify the exact path to adaptive_resize

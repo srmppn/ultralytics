@@ -2093,7 +2093,7 @@ class AdaptiveResize(nn.Module):
             max=self.max_scale
         )
 
-        resized_feature = self._resize(c3k2_opt, scale_factor, 'bilinear')
+        resized_feature = self._resize(c3k2_opt, scale_factor, 'nearest')
         return [resized_feature, scale_factor]
 
 

@@ -11,7 +11,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--data',
         type=str,
-        default="uavdt_complete_datasets/data.yaml",
+        default="simple_datasets/data.yaml",
         help="Path to the dataset .yaml file or directory"
     )
     parser.add_argument(

@@ -2054,7 +2054,7 @@ class AdaptiveResize(nn.Module):
         self.max_scale = max_scale
         self.adaptive_resize = nn.Sequential(
             nn.Linear(1, 1, bias=False),
-            nn.SiLU()
+            nn.ReLU()
         )
 
         nn.init.constant_(self.adaptive_resize[0].weight, 1.45)
@@ -2070,7 +2070,7 @@ class AdaptiveResize(nn.Module):
         grid = grid.unsqueeze(0).to(device=self.adaptive_resize[0].weight.device, dtype=self.adaptive_resize[0].weight.dtype).expand(b, -1, -1, -1)  # (B, H, W, 2)
         grid = grid / scale.view(b, 1, 1, 1)  # [B,1,1,1]
 
-        return F.grid_sample(image, grid, mode=mode, align_corners=True, padding_mode='zeros')
+        return F.grid_sample(image, grid, mode=mode, align_corners=True, padding_mode='border')
 
     def forward(self, x: List):
         c3k2_opt, proxy_opt = x
@@ -2091,7 +2091,7 @@ class AdaptiveResize(nn.Module):
             max=self.max_scale
         )
 
-        resized_feature = self._resize(c3k2_opt, scale_factor, 'nearest')
+        resized_feature = self._resize(c3k2_opt, scale_factor, 'bilinear')
         return [resized_feature, scale_factor]
 
 

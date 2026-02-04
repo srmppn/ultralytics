@@ -22,6 +22,13 @@ if __name__ == '__main__':
         help="Path to the dataset .yaml file or directory"
     )
 
+    parser.add_argument(
+        '--device',
+        type=str,
+        default="cpu",
+        help="device"
+    )
+
     args = parser.parse_args()
 
     benchmark(
@@ -30,6 +37,6 @@ if __name__ == '__main__':
         imgsz=640,             # image size
         half=True,            # use FP16 (True for faster GPU inference)
         int8=False,            # use INT8 (True for edge device optimization)
-        device=0               # 0 for GPU, 'cpu' for CPU
+        device=args.device               # 0 for GPU, 'cpu' for CPU
     )
 

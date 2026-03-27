@@ -138,6 +138,42 @@ def scale_boxes(img1_shape, boxes, img0_shape, ratio_pad=None, padding: bool = T
     return clip_boxes(boxes, img0_shape)
 
 
+def descale_boxes_with_padding(boxes, scales, h, w):
+    """
+    boxes: Tensor (N, 4) with (x_min, y_min, x_max, y_max)
+    scale: float
+    h, w: original image height, width
+    """
+    B, M, _ = boxes.shape
+
+    # reshape scales for broadcasting
+    scales = scales.view(B, 1, 1)
+
+    # scaled dimensions
+    resize_h = (h * scales).round()
+    resize_w = (w * scales).round()
+
+    # compute padding
+    pad_h = h - resize_h
+    pad_w = w - resize_w
+
+    pad_top = pad_h / 2
+    pad_left = pad_w / 2
+
+    # broadcast padding for each box
+    pad_top = pad_top.view(B, 1, 1)
+    pad_left = pad_left.view(B, 1, 1)
+
+    # clone boxes to avoid modifying in-place
+    boxes = boxes.clone()
+
+    # scale and add padding
+    boxes[..., [0, 2]] = boxes[..., [0, 2]] * scales + pad_left
+    boxes[..., [1, 3]] = boxes[..., [1, 3]] * scales + pad_top
+
+    return clip_boxes(boxes, (h, w))
+
+
 def make_divisible(x: int, divisor):
     """
     Return the nearest number that is divisible by the given divisor.
@@ -244,7 +280,6 @@ def non_max_suppression(
         prediction = prediction[0]  # select only inference output
     if classes is not None:
         classes = torch.tensor(classes, device=prediction.device)
-
     if prediction.shape[-1] == 6 or end2end:  # end-to-end model (BNC, i.e. 1,300,6)
         output = [pred[pred[:, 4] > conf_thres][:max_det] for pred in prediction]
         if classes is not None:

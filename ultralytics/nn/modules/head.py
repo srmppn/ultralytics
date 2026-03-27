@@ -112,17 +112,18 @@ class Detect(nn.Module):
             self.one2one_cv2 = copy.deepcopy(self.cv2)
             self.one2one_cv3 = copy.deepcopy(self.cv3)
 
-    def forward(self, x: List[torch.Tensor]) -> Union[List[torch.Tensor], Tuple]:
+    def forward(self, inp: List[List[torch.Tensor]]) -> Union[List[torch.Tensor], Tuple]:
         """Concatenate and return predicted bounding boxes and class probabilities."""
+        x, d = [v[0] for v in inp], [v[1] for v in inp]
         if self.end2end:
             return self.forward_end2end(x)
 
         for i in range(self.nl):
             x[i] = torch.cat((self.cv2[i](x[i]), self.cv3[i](x[i])), 1)
         if self.training:  # Training path
-            return x
+            return { 'opt': x, 'alt': d }
         y = self._inference(x)
-        return y if self.export else (y, x)
+        return y if self.export else (y, { 'opt': x, 'alt': d })
 
     def forward_end2end(self, x: List[torch.Tensor]) -> Union[dict, Tuple]:
         """
@@ -183,7 +184,7 @@ class Detect(nn.Module):
             dbox = self.decode_bboxes(self.dfl(box), self.anchors.unsqueeze(0)) * self.strides
         if self.export and self.format == "imx":
             return dbox.transpose(1, 2), cls.sigmoid().permute(0, 2, 1)
-        return torch.cat((dbox, cls.sigmoid()), 1)
+        return torch.cat((dbox, cls.sigmoid()), dim=1)
 
     def bias_init(self):
         """Initialize Detect() biases, WARNING: requires stride availability."""

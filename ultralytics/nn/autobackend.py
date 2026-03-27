@@ -609,7 +609,7 @@ class AutoBackend(nn.Module):
 
     def forward(
         self,
-        im: torch.Tensor,
+        input: List[torch.Tensor],
         augment: bool = False,
         visualize: bool = False,
         embed: Optional[List] = None,
@@ -628,6 +628,7 @@ class AutoBackend(nn.Module):
         Returns:
             (torch.Tensor | List[torch.Tensor]): The raw output tensor(s) from the model.
         """
+        im, altitude = input
         b, ch, h, w = im.shape  # batch, channel, height, width
         if self.fp16 and im.dtype != torch.float16:
             im = im.half()  # to FP16
@@ -636,7 +637,7 @@ class AutoBackend(nn.Module):
 
         # PyTorch
         if self.pt or self.nn_module:
-            y = self.model(im, augment=augment, visualize=visualize, embed=embed, **kwargs)
+            y = self.model([im, altitude], augment=augment, visualize=visualize, embed=embed, **kwargs)
 
         # TorchScript
         elif self.jit:
@@ -855,8 +856,9 @@ class AutoBackend(nn.Module):
         warmup_types = self.pt, self.jit, self.onnx, self.engine, self.saved_model, self.pb, self.triton, self.nn_module
         if any(warmup_types) and (self.device.type != "cpu" or self.triton):
             im = torch.empty(*imgsz, dtype=torch.half if self.fp16 else torch.float, device=self.device)  # input
+            alt = torch.zeros(1, device=self.device)
             for _ in range(2 if self.jit else 1):
-                self.forward(im)  # warmup
+                self.forward([im, alt])  # warmup
 
     @staticmethod
     def _model_type(p: str = "path/to/model.pt") -> List[bool]:

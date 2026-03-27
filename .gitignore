@@ -2,7 +2,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
 # C extensions
 *.so
 
@@ -27,7 +26,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 requirements.txt
-setup.py
 ultralytics.egg-info
 
 # PyInstaller
@@ -141,7 +139,7 @@ dmypy.json
 .pyre/
 
 # datasets and projects (ignore /datasets dir at root only to allow for docs/en/datasets dir)
-/datasets
+/uavdt_datasets
 runs/
 wandb/
 .DS_Store
